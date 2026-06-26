@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   }
 
   const { data, error } = await supabaseServer
-    .from('users')
+    .from('passcodes')
     .select('id, role, office_id')
     .eq('passcode', passcode)
     .eq('is_active', true)
