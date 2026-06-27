@@ -20,40 +20,33 @@ async function generateUniqueTicketCode(): Promise<number> {
 }
 
 export async function createTicket(formData: FormData) {
-  const officeCode = formData.get('office_id')?.toString().trim()
+  const officeId = formData.get('office_id')?.toString().trim()
   const description = formData.get('description')?.toString().trim()
 
-  if (!officeCode || !description) {
+  if (!officeId || !description) {
     return { error: 'Error: Office ID and description are required.' }
   }
 
-  // Look up office by numeric office_id
   const { data: office, error: officeError } = await supabase
     .from('offices')
-    .select('id, office_id')
-    .eq('office_id', officeCode)
+    .select('id, office_id, office_name')
+    .eq('office_id', officeId)
     .maybeSingle()
 
   if (officeError || !office) {
     return { error: 'Error: Invalid office ID. Please check the code.' }
   }
 
-  // Generate unique 6-digit ticket code
   const ticketCode = await generateUniqueTicketCode()
+  const title = `Ticket from office ${office.office_id}`
 
-  // Auto-generate title
-  const title = `Ticket from office ${officeCode}`
-
-  // Insert ticket
-  const { error: insertError } = await supabase
-    .from('tickets')
-    .insert({
-      office_id: office.id,
-      ticket_code: ticketCode,
-      title,
-      description,
-      status: 'open',
-    })
+  const { error: insertError } = await supabase.from('tickets').insert({
+    office_id: office.id,
+    ticket_code: ticketCode,
+    title,
+    description,
+    status: 'open',
+  })
 
   if (insertError) {
     return { error: 'Error: Could not create ticket. Please try again.' }
@@ -61,6 +54,7 @@ export async function createTicket(formData: FormData) {
 
   return { success: true, ticketCode }
 }
+
 export async function getTicketStatus(ticketCode: number) {
   const { data: ticket, error: ticketError } = await supabase
     .from('tickets')
@@ -76,7 +70,6 @@ export async function getTicketStatus(ticketCode: number) {
     return { error: 'Ticket not found. Please check the 6-digit code.' }
   }
 
-  // Sort replies chronologically (oldest to newest)
   if (ticket.ticket_replies) {
     ticket.ticket_replies.sort((a: any, b: any) => 
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -84,4 +77,20 @@ export async function getTicketStatus(ticketCode: number) {
   }
 
   return { data: ticket }
+}
+
+export async function escalateTicket(ticketId: string, reason: string) {
+  // 1. Insert the escalation reason as a special reply
+  await supabase.from('ticket_replies').insert({
+    ticket_id: ticketId,
+    message: `🚨 ESCALATED BY STAFF: ${reason}`
+  })
+
+  // 2. Update the status to 'escalated'
+  const { error } = await supabase.from('tickets').update({ status: 'escalated' }).eq('id', ticketId)
+  
+  if (error) {
+    return { error: 'Failed to escalate ticket.' }
+  }
+  return { success: true }
 }
