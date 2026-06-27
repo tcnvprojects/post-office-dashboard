@@ -2,193 +2,113 @@
 
 import { useEffect, useState } from 'react'
 import { getTickets, updateTicketStatus, addReply } from '@/app/actions/admin-tickets'
-import { getMatrixStructure, getParameterLeaderboard } from '@/app/actions/performance'
 
-// --- TICKET CARD COMPONENT (Keep exactly as before) ---
+// --- TICKET CARD COMPONENT ---
 const TicketCard = ({ ticket, handleMove, replyingTo, setReplyingTo, replyMessage, setReplyMessage, handleSubmitReply }: any) => (
-  // ... (Paste your existing TicketCard component code here to save space)
-  <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
-      {/* existing ticket card code */}
-      <h3 className="font-semibold text-gray-800 text-sm">{ticket.offices?.office_name}</h3>
+  <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 hover:shadow-md transition">
+    <div className="flex justify-between items-start mb-2">
+      <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">#{ticket.ticket_code}</span>
+      <span className="text-xs text-gray-500">{new Date(ticket.created_at).toLocaleDateString()}</span>
+    </div>
+    <h3 className="font-semibold text-gray-800 text-sm">{ticket.offices?.office_name} ({ticket.offices?.office_id})</h3>
+    <p className="text-gray-600 text-sm mt-2 line-clamp-3">{ticket.description}</p>
+
+    <div className="mt-4 flex flex-wrap gap-2">
+      {ticket.status === 'open' && (
+        <button onClick={() => handleMove(ticket.id, 'in_progress')} className="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-200">Move to In Progress</button>
+      )}
+      {ticket.status === 'in_progress' && (
+        <button onClick={() => handleMove(ticket.id, 'open')} className="text-xs bg-gray-100 text-gray-800 px-3 py-1 rounded hover:bg-gray-200">Move to Open</button>
+      )}
+      {ticket.status === 'escalated' && (
+        <button onClick={() => handleMove(ticket.id, 'in_progress')} className="text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">Acknowledge</button>
+      )}
+      {ticket.status !== 'closed' && (
+        <button onClick={() => setReplyingTo(ticket.id)} className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Reply</button>
+      )}
+    </div>
+
+    {replyingTo === ticket.id && (
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        <textarea
+          className="w-full text-sm rounded-lg border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+          rows={3}
+          value={replyMessage}
+          onChange={(e) => setReplyMessage(e.target.value)}
+          autoFocus
+        />
+        <div className="flex flex-wrap gap-2 mt-2">
+          <button onClick={() => handleSubmitReply(ticket.id, true)} className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700">Reply & Close</button>
+          <button onClick={() => handleSubmitReply(ticket.id, false)} className="text-xs bg-gray-200 text-gray-800 px-3 py-1.5 rounded hover:bg-gray-300">Reply & Keep Open</button>
+          <button onClick={() => { setReplyingTo(null); setReplyMessage(''); }} className="text-xs text-red-600 px-3 py-1.5 hover:underline">Cancel</button>
+        </div>
+      </div>
+    )}
   </div>
 )
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'tickets' | 'performance'>('tickets')
-
-  // --- Tickets State ---
   const [tickets, setTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyMessage, setReplyMessage] = useState('')
 
-  // --- Performance State ---
-  const [structure, setStructure] = useState<any[]>([])
-  const [selectedVertical, setSelectedVertical] = useState<any | null>(null)
-  const [selectedParam, setSelectedParam] = useState<any | null>(null)
-  const [leaderboard, setLeaderboard] = useState<{ top5: any[], bottom5: any[] } | null>(null)
-
-  useEffect(() => {
-    async function loadInitialData() {
-      // Load Tickets
-      const ticketResult = await getTickets()
-      if (ticketResult.data) setTickets(ticketResult.data)
-      setLoading(false)
-
-      // Load Matrix Structure
-      const matrixResult = await getMatrixStructure()
-      if (matrixResult.data) setStructure(matrixResult.data)
-    }
-    loadInitialData()
-  }, [])
-
-  // --- Ticket Actions ---
-  async function handleMove(ticketId: string, newStatus: string) {
-    await updateTicketStatus(ticketId, newStatus)
+  async function fetchTickets() {
+    setLoading(true)
     const result = await getTickets()
     if (result.data) setTickets(result.data)
+    setLoading(false)
   }
+
+  useEffect(() => { fetchTickets() }, [])
+
+  async function handleMove(ticketId: string, newStatus: string) {
+    await updateTicketStatus(ticketId, newStatus)
+    fetchTickets()
+  }
+
   async function handleSubmitReply(ticketId: string, closeTicket: boolean) {
     if (!replyMessage.trim()) return
     await addReply(ticketId, replyMessage, closeTicket)
     setReplyingTo(null); setReplyMessage('')
-    const result = await getTickets()
-    if (result.data) setTickets(result.data)
+    fetchTickets()
   }
 
-  // --- Performance Actions ---
-  async function handleParamClick(param: any) {
-    setSelectedParam(param)
-    setLeaderboard(null)
-    const result = await getParameterLeaderboard(param.id)
-    setLeaderboard(result)
-  }
+  const escalated = tickets.filter((t) => t.status === 'escalated')
+  const open = tickets.filter((t) => t.status === 'open')
+  const inProgress = tickets.filter((t) => t.status === 'in_progress')
+  const closed = tickets.filter((t) => t.status === 'closed')
 
   return (
     <main className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-[1400px] mx-auto">
+        <h1 className="text-3xl font-bold text-gray-800 mb-8">Admin Ticket Board</h1>
         
-        {/* Navigation Tabs */}
-        <div className="flex gap-4 mb-8 border-b pb-4">
-          <button 
-            onClick={() => setActiveTab('tickets')}
-            className={`text-2xl font-bold px-4 py-2 rounded-lg transition ${activeTab === 'tickets' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-200'}`}
-          >
-            Ticket Board
-          </button>
-          <button 
-            onClick={() => setActiveTab('performance')}
-            className={`text-2xl font-bold px-4 py-2 rounded-lg transition ${activeTab === 'performance' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-200'}`}
-          >
-            Assessment Matrix
-          </button>
-        </div>
-        
-        {/* --- TICKETS VIEW --- */}
-        {activeTab === 'tickets' && (
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-             {/* Your 4 Kanban columns go here exactly as they were */}
-             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
-               <h2 className="font-semibold text-gray-700 mb-4">Tickets will render here...</h2>
-             </div>
-           </div>
-        )}
-
-        {/* --- PERFORMANCE VIEW --- */}
-        {activeTab === 'performance' && (
-          <div className="bg-white rounded-3xl shadow-sm border p-8">
-            
-            {/* Level 1: Verticals */}
-            {!selectedVertical && !selectedParam && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">Select a Vertical</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {structure.map((v) => (
-                    <div 
-                      key={v.id} onClick={() => setSelectedVertical(v)}
-                      className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-8 text-center cursor-pointer hover:border-blue-600 hover:bg-blue-50 transition"
-                    >
-                      <h3 className="text-xl font-bold text-gray-800">{v.vertical_name}</h3>
-                      <p className="text-gray-500 mt-2">{v.parameters.length} Parameters</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Level 2: Parameters within a Vertical */}
-            {selectedVertical && !selectedParam && (
-              <div>
-                <button onClick={() => setSelectedVertical(null)} className="mb-6 font-semibold text-blue-600 hover:underline">← Back to Verticals</button>
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">{selectedVertical.vertical_name} Parameters</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {selectedVertical.parameters.map((p: any) => (
-                    <div 
-                      key={p.id} onClick={() => handleParamClick(p)}
-                      className="bg-white border rounded-xl p-5 cursor-pointer hover:shadow-lg transition"
-                    >
-                      <p className="font-bold text-gray-800 text-lg">{p.parameter_name}</p>
-                      <p className="text-sm text-gray-500 mt-2">Target: {p.target_value ? `${p.target_value} ${p.target_unit}` : p.description}</p>
-                      <div className="mt-4 text-sm text-blue-600 font-bold bg-blue-50 py-1 px-3 rounded inline-block">View Leaderboard →</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Level 3: Leaderboard (Top 5 / Bottom 5) */}
-            {selectedParam && (
-              <div>
-                <button onClick={() => { setSelectedParam(null); setLeaderboard(null); }} className="mb-6 font-semibold text-blue-600 hover:underline">← Back to Parameters</button>
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">{selectedParam.parameter_name}</h2>
-                <p className="text-gray-500 mb-8">Target: {selectedParam.target_value ? `${selectedParam.target_value} ${selectedParam.target_unit}` : selectedParam.description}</p>
-                
-                {!leaderboard ? (
-                   <p className="text-gray-500 italic">Calculating rankings...</p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Top 5 */}
-                    <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
-                      <h3 className="text-xl font-bold text-green-800 mb-4">🏆 Top 5 Offices</h3>
-                      {leaderboard.top5.length === 0 ? <p className="text-gray-500 text-sm">No data recorded yet.</p> : (
-                        <div className="space-y-3">
-                          {leaderboard.top5.map((m: any, idx: number) => (
-                            <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-lg border shadow-sm">
-                              <div>
-                                <span className="font-bold text-gray-800">{idx + 1}. {m.offices.office_name}</span>
-                                <span className="block text-xs text-gray-400">ID: {m.offices.office_id}</span>
-                              </div>
-                              <span className="font-black text-green-600 text-lg">{m.actual_value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Bottom 5 */}
-                    <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
-                      <h3 className="text-xl font-bold text-red-800 mb-4">⚠️ Bottom 5 Offices</h3>
-                      {leaderboard.bottom5.length === 0 ? <p className="text-gray-500 text-sm">No data recorded yet.</p> : (
-                        <div className="space-y-3">
-                          {leaderboard.bottom5.map((m: any, idx: number) => (
-                            <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-lg border shadow-sm">
-                              <div>
-                                <span className="font-bold text-gray-800">{leaderboard!.bottom5.length - idx}. {m.offices.office_name}</span>
-                                <span className="block text-xs text-gray-400">ID: {m.offices.office_id}</span>
-                              </div>
-                              <span className="font-black text-red-600 text-lg">{m.actual_value}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {/* Column: Escalated */}
+          <div className="bg-red-50 p-4 rounded-2xl border border-red-200">
+            <h2 className="font-bold text-red-800 mb-4">🚨 Escalated ({escalated.length})</h2>
+            {escalated.map((t) => <TicketCard key={t.id} ticket={t} handleMove={handleMove} replyingTo={replyingTo} setReplyingTo={setReplyingTo} replyMessage={replyMessage} setReplyMessage={setReplyMessage} handleSubmitReply={handleSubmitReply} />)}
           </div>
-        )}
 
+          {/* Column: Open */}
+          <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+            <h2 className="font-semibold text-gray-700 mb-4">Open ({open.length})</h2>
+            {open.map((t) => <TicketCard key={t.id} ticket={t} handleMove={handleMove} replyingTo={replyingTo} setReplyingTo={setReplyingTo} replyMessage={replyMessage} setReplyMessage={setReplyMessage} handleSubmitReply={handleSubmitReply} />)}
+          </div>
+
+          {/* Column: In Progress */}
+          <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+            <h2 className="font-semibold text-blue-800 mb-4">In Progress ({inProgress.length})</h2>
+            {inProgress.map((t) => <TicketCard key={t.id} ticket={t} handleMove={handleMove} replyingTo={replyingTo} setReplyingTo={setReplyingTo} replyMessage={replyMessage} setReplyMessage={setReplyMessage} handleSubmitReply={handleSubmitReply} />)}
+          </div>
+
+          {/* Column: Closed */}
+          <div className="bg-green-50 p-4 rounded-2xl border border-green-100">
+            <h2 className="font-semibold text-green-800 mb-4">Closed ({closed.length})</h2>
+            {closed.map((t) => <TicketCard key={t.id} ticket={t} handleMove={handleMove} replyingTo={replyingTo} setReplyingTo={setReplyingTo} replyMessage={replyMessage} setReplyMessage={setReplyMessage} handleSubmitReply={handleSubmitReply} />)}
+          </div>
+        </div>
       </div>
     </main>
   )
