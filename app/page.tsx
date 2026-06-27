@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { verifyPasscode } from '@/app/actions/auth'
+import { verifyPasscode } from './actions/auth'
 
 export default function LoginPage() {
   const [passcode, setPasscode] = useState('')
@@ -13,7 +13,6 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     
-    // This calls your existing authentication logic
     const result = await verifyPasscode(passcode)
     
     if (result.success) {
@@ -33,13 +32,11 @@ export default function LoginPage() {
     <main className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 flex items-center justify-center p-6">
       <div className="bg-white/10 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-white/20 w-full max-w-sm text-center">
         
-        {/* Visual Element: Logo/Title area */}
         <div className="mb-8">
           <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Anjal Payanam</h1>
           <p className="text-blue-100 font-medium text-sm uppercase tracking-widest">Management Portal</p>
         </div>
         
-        {/* Input Area */}
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="relative">
             <input 
@@ -64,7 +61,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Footer Link */}
         <p className="mt-8 text-blue-200 text-xs font-semibold uppercase">
           Chengalpattu West Sub Division
         </p>
