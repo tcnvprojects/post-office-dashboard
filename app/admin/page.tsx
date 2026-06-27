@@ -3,6 +3,101 @@
 import { useEffect, useState } from 'react'
 import { getTickets, updateTicketStatus, addReply } from '@/app/actions/admin-tickets'
 
+// We moved this outside the main component to fix the typing/focus bug!
+const TicketCard = ({ 
+  ticket, 
+  handleMove, 
+  replyingTo, 
+  setReplyingTo, 
+  replyMessage, 
+  setReplyMessage, 
+  handleSubmitReply 
+}: any) => (
+  <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
+    <div className="flex justify-between items-start mb-2">
+      <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
+        #{ticket.ticket_code}
+      </span>
+      <span className="text-xs text-gray-500">
+        {new Date(ticket.created_at).toLocaleDateString()}
+      </span>
+    </div>
+    <h3 className="font-semibold text-gray-800 text-sm">
+      {ticket.offices?.office_name} ({ticket.offices?.office_id})
+    </h3>
+    <p className="text-gray-600 text-sm mt-2 line-clamp-3">
+      {ticket.description}
+    </p>
+
+    {/* Action Buttons based on Status */}
+    <div className="mt-4 flex flex-wrap gap-2">
+      {ticket.status === 'open' && (
+        <button
+          onClick={() => handleMove(ticket.id, 'in_progress')}
+          className="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-200"
+        >
+          Move to In Progress
+        </button>
+      )}
+      
+      {ticket.status === 'in_progress' && (
+        <button
+          onClick={() => handleMove(ticket.id, 'open')}
+          className="text-xs bg-gray-100 text-gray-800 px-3 py-1 rounded hover:bg-gray-200"
+        >
+          Move to Open
+        </button>
+      )}
+
+      {ticket.status !== 'closed' && (
+        <button
+          onClick={() => setReplyingTo(ticket.id)}
+          className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+        >
+          Reply
+        </button>
+      )}
+    </div>
+
+    {/* Inline Reply Form */}
+    {replyingTo === ticket.id && (
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        <textarea
+          className="w-full text-sm rounded-lg border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+          rows={3}
+          placeholder="Type your reply to the staff..."
+          value={replyMessage}
+          onChange={(e) => setReplyMessage(e.target.value)}
+          autoFocus
+        />
+        <div className="flex gap-2 mt-2">
+          <button
+            onClick={() => handleSubmitReply(ticket.id, true)}
+            className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700"
+          >
+            Reply & Close Ticket
+          </button>
+          <button
+            onClick={() => handleSubmitReply(ticket.id, false)}
+            className="text-xs bg-gray-200 text-gray-800 px-3 py-1.5 rounded hover:bg-gray-300"
+          >
+            Reply & Keep Open
+          </button>
+          <button
+            onClick={() => {
+              setReplyingTo(null)
+              setReplyMessage('')
+            }}
+            className="text-xs text-red-600 px-3 py-1.5 hover:underline"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+)
+
 export default function AdminDashboard() {
   const [tickets, setTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,89 +138,6 @@ export default function AdminDashboard() {
   const inProgressTickets = tickets.filter((t) => t.status === 'in_progress')
   const closedTickets = tickets.filter((t) => t.status === 'closed')
 
-  // Reusable Ticket Card Component
-  const TicketCard = ({ ticket }: { ticket: any }) => (
-    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
-      <div className="flex justify-between items-start mb-2">
-        <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-          #{ticket.ticket_code}
-        </span>
-        <span className="text-xs text-gray-500">
-          {new Date(ticket.created_at).toLocaleDateString()}
-        </span>
-      </div>
-      <h3 className="font-semibold text-gray-800 text-sm">
-        {ticket.offices?.office_name} ({ticket.offices?.office_id})
-      </h3>
-      <p className="text-gray-600 text-sm mt-2 line-clamp-3">
-        {ticket.description}
-      </p>
-
-      {/* Action Buttons based on Status */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {ticket.status === 'open' && (
-          <button
-            onClick={() => handleMove(ticket.id, 'in_progress')}
-            className="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded hover:bg-yellow-200"
-          >
-            Move to In Progress
-          </button>
-        )}
-        
-        {ticket.status === 'in_progress' && (
-          <button
-            onClick={() => handleMove(ticket.id, 'open')}
-            className="text-xs bg-gray-100 text-gray-800 px-3 py-1 rounded hover:bg-gray-200"
-          >
-            Move to Open
-          </button>
-        )}
-
-        {ticket.status !== 'closed' && (
-          <button
-            onClick={() => setReplyingTo(ticket.id)}
-            className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-          >
-            Reply
-          </button>
-        )}
-      </div>
-
-      {/* Inline Reply Form */}
-      {replyingTo === ticket.id && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <textarea
-            className="w-full text-sm rounded-lg border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-            rows={3}
-            placeholder="Type your reply to the staff..."
-            value={replyMessage}
-            onChange={(e) => setReplyMessage(e.target.value)}
-          />
-          <div className="flex gap-2 mt-2">
-            <button
-              onClick={() => handleSubmitReply(ticket.id, true)}
-              className="text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700"
-            >
-              Reply & Close Ticket
-            </button>
-            <button
-              onClick={() => handleSubmitReply(ticket.id, false)}
-              className="text-xs bg-gray-200 text-gray-800 px-3 py-1.5 rounded hover:bg-gray-300"
-            >
-              Reply & Keep Open
-            </button>
-            <button
-              onClick={() => setReplyingTo(null)}
-              className="text-xs text-red-600 px-3 py-1.5 hover:underline"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-
   if (loading) {
     return <div className="p-10 text-center text-gray-500">Loading Kanban board...</div>
   }
@@ -145,7 +157,16 @@ export default function AdminDashboard() {
               </span>
             </div>
             {openTickets.map((t) => (
-              <TicketCard key={t.id} ticket={t} />
+              <TicketCard 
+                key={t.id} 
+                ticket={t} 
+                handleMove={handleMove}
+                replyingTo={replyingTo}
+                setReplyingTo={setReplyingTo}
+                replyMessage={replyMessage}
+                setReplyMessage={setReplyMessage}
+                handleSubmitReply={handleSubmitReply}
+              />
             ))}
           </div>
 
@@ -158,7 +179,16 @@ export default function AdminDashboard() {
               </span>
             </div>
             {inProgressTickets.map((t) => (
-              <TicketCard key={t.id} ticket={t} />
+              <TicketCard 
+                key={t.id} 
+                ticket={t} 
+                handleMove={handleMove}
+                replyingTo={replyingTo}
+                setReplyingTo={setReplyingTo}
+                replyMessage={replyMessage}
+                setReplyMessage={setReplyMessage}
+                handleSubmitReply={handleSubmitReply}
+              />
             ))}
           </div>
 
@@ -171,7 +201,16 @@ export default function AdminDashboard() {
               </span>
             </div>
             {closedTickets.map((t) => (
-              <TicketCard key={t.id} ticket={t} />
+              <TicketCard 
+                key={t.id} 
+                ticket={t} 
+                handleMove={handleMove}
+                replyingTo={replyingTo}
+                setReplyingTo={setReplyingTo}
+                replyMessage={replyMessage}
+                setReplyMessage={setReplyMessage}
+                handleSubmitReply={handleSubmitReply}
+              />
             ))}
           </div>
         </div>
