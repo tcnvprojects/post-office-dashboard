@@ -1,5 +1,6 @@
 'use client'
-
+// Add this line here
+export const dynamic = 'force-dynamic'
 import { useRef, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createTicket, getTicketStatus, escalateTicket } from '@/app/actions/tickets'
