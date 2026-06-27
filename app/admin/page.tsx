@@ -41,7 +41,7 @@ export default function AdminDashboard() {
   const [file, setFile] = useState<File | null>(null)
   const [selectedParamId, setSelectedParamId] = useState('')
   const [month, setMonth] = useState('June')
-  const [week, setWeek] = useState('Week 1')
+  const [part, setPart] = useState('Part 1') // Updated from week to part
 
   async function loadData() {
     const t = await getTickets(); if (t.data) setTickets(t.data)
@@ -58,7 +58,7 @@ export default function AdminDashboard() {
     Papa.parse(file, {
       header: true, skipEmptyLines: true,
       complete: async (results) => {
-        const res = await bulkUpdateMetrics(results.data, selectedParamId, month, week)
+        const res = await bulkUpdateMetrics(results.data, selectedParamId, month, part) // Pass 'part' instead of 'week'
         if (res.success) alert('Upload successful!')
         else alert('Error: ' + res.error)
       }
@@ -103,7 +103,9 @@ export default function AdminDashboard() {
             </select>
             <div className="grid grid-cols-2 gap-2">
               <select className="border p-2 rounded" onChange={(e) => setMonth(e.target.value)}><option>June</option><option>July</option></select>
-              <select className="border p-2 rounded" onChange={(e) => setWeek(e.target.value)}><option>Week 1</option><option>Week 2</option><option>Week 3</option><option>Week 4</option></select>
+              <select className="border p-2 rounded" onChange={(e) => setPart(e.target.value)}>
+                  <option>Part 1</option><option>Part 2</option><option>Part 3</option>
+              </select>
             </div>
             <input type="file" accept=".csv" className="w-full border p-2 rounded" onChange={(e) => setFile(e.target.files?.[0] || null)} />
           </div>
