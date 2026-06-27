@@ -17,7 +17,6 @@ function DashboardContent() {
   const [ticketDetails, setTicketDetails] = useState<any>(null)
   const [raiseBanner, setRaiseBanner] = useState<string | null>(null)
   
-  // Escalation state
   const [isEscalating, setIsEscalating] = useState(false)
   const [escalateReason, setEscalateReason] = useState('')
 
@@ -94,9 +93,10 @@ function DashboardContent() {
                 {ticketDetails.ticket_replies?.map((r:any, i:number) => <p key={i} className="text-sm bg-blue-50 p-2 rounded mt-1 font-medium">{r.message}</p>)}
               </div>
               
-              {ticketDetails.status !== 'escalated' && ticketDetails.status !== 'closed' && (
+              {/* FIX: Escalation now only shows if status is closed */}
+              {ticketDetails.status === 'closed' && (
                 <div>
-                  {!isEscalating ? <button onClick={() => setIsEscalating(true)} className="text-red-600 underline text-xs font-bold">Escalate ticket?</button> : 
+                  {!isEscalating ? <button onClick={() => setIsEscalating(true)} className="text-red-600 underline text-xs font-bold">Escalate ticket to re-open?</button> : 
                   <div className="flex gap-2 mt-2"><input className="border p-1 w-full text-xs" onChange={(e) => setEscalateReason(e.target.value)} placeholder="Reason for escalation" />
                   <button onClick={async () => { await escalateTicket(ticketDetails.id, escalateReason); alert('Escalated successfully'); setIsEscalating(false); }} className="bg-red-600 text-white px-3 rounded text-xs font-bold">Submit</button></div>}
                 </div>
