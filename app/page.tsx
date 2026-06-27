@@ -2,40 +2,72 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { verifyPasscode } from '@/app/actions/auth'
 
 export default function LoginPage() {
   const [passcode, setPasscode] = useState('')
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Logic to verify passcode and route to /admin or /staff
-    if (passcode === 'admin123') router.push('/admin')
-    else if (passcode === 'staff123') router.push('/staff?office_id=123')
-    else alert('Invalid Passcode')
+    setLoading(true)
+    
+    // This calls your existing authentication logic
+    const result = await verifyPasscode(passcode)
+    
+    if (result.success) {
+      if (result.role === 'admin') {
+        router.push('/admin')
+      } else {
+        router.push(`/staff?office_id=${result.office_id}`)
+      }
+    } else {
+      alert('Invalid Passcode')
+      setLoading(false)
+      setPasscode('')
+    }
   }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 flex items-center justify-center p-6">
-      <div className="bg-white/10 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/20 w-full max-w-sm text-center">
-        <h1 className="text-3xl font-black text-white mb-2">Anjal Payanam</h1>
-        <p className="text-blue-100 mb-8 text-sm">Enter Passcode to continue</p>
+      <div className="bg-white/10 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-white/20 w-full max-w-sm text-center">
         
-        <form onSubmit={handleLogin} className="space-y-4">
-          <input 
-            type="password" 
-            placeholder="Enter Passcode" 
-            value={passcode}
-            onChange={(e) => setPasscode(e.target.value)}
-            className="w-full p-4 rounded-xl bg-white/90 outline-none text-center text-xl tracking-widest focus:ring-2 focus:ring-blue-400" 
-          />
+        {/* Visual Element: Logo/Title area */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Anjal Payanam</h1>
+          <p className="text-blue-100 font-medium text-sm uppercase tracking-widest">Management Portal</p>
+        </div>
+        
+        {/* Input Area */}
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="relative">
+            <input 
+              type="password" 
+              placeholder="Enter Passcode" 
+              value={passcode}
+              onChange={(e) => setPasscode(e.target.value)}
+              className="w-full p-5 rounded-2xl bg-white/90 outline-none text-center text-2xl font-bold tracking-widest focus:ring-4 focus:ring-blue-300 transition-all shadow-inner" 
+            />
+          </div>
+          
           <button 
             type="submit"
-            className="w-full p-4 bg-white text-blue-900 font-bold rounded-xl shadow-lg hover:bg-blue-50 active:scale-95 transition"
+            disabled={loading}
+            className="w-full p-5 bg-white text-blue-900 font-black rounded-2xl shadow-lg hover:bg-blue-50 active:scale-95 transition-all flex justify-center items-center"
           >
-            Access Portal
+            {loading ? (
+              <span className="animate-pulse">VERIFYING...</span>
+            ) : (
+              'ACCESS PORTAL'
+            )}
           </button>
         </form>
+
+        {/* Footer Link */}
+        <p className="mt-8 text-blue-200 text-xs font-semibold uppercase">
+          Chengalpattu West Sub Division
+        </p>
       </div>
     </main>
   )
