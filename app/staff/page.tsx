@@ -44,7 +44,9 @@ function DashboardContent() {
   async function checkTicketStatus(formData: FormData) {
     const code = Number(formData.get('code'))
     const res = await getTicketStatus(code)
-    if (res?.data) setTicketDetails(res.data)
+    if (res?.data) {
+      setTicketDetails(res.data)
+    }
   }
 
   const calculateVerticalScore = (v: any) => {
@@ -104,7 +106,7 @@ function DashboardContent() {
             <form ref={formRef} action={handleRaise} className="space-y-4"><textarea name="description" required className="w-full border p-4 rounded-xl bg-gray-50 text-sm" rows={4} /><button className="bg-blue-600 text-white w-full py-4 rounded-xl font-bold">SUBMIT</button></form>
             <div className="border-t pt-6"><form action={checkTicketStatus} className="flex gap-2"><input name="code" required className="border p-4 rounded-xl text-sm w-full" /><button className="bg-gray-800 text-white px-6 rounded-xl font-bold">CHECK</button></form>
               {ticketDetails && (
-                <div className="mt-4 bg-gray-50 p-6 rounded-2xl text-sm space-y-4 border">
+                <div className="mt-4 bg-gray-50 p-6 rounded-2xl text-sm space-y-2 border">
                   <p className="font-bold border-b pb-2">Status: {ticketDetails.status?.toUpperCase()}</p>
                   
                   {/* DISPLAY ORIGINAL GRIEVANCE */}
@@ -113,11 +115,11 @@ function DashboardContent() {
                     <p className="text-gray-800 font-medium">{ticketDetails.description}</p>
                   </div>
 
-                  {/* DISPLAY ADMIN REPLY */}
-                  {ticketDetails.admin_reply && (
+                  {/* DISPLAY ADMIN REPLY FROM TICKET_REPLIES.MESSAGE */}
+                  {ticketDetails.ticket_replies && ticketDetails.ticket_replies.length > 0 && (
                     <div className="bg-green-50 p-3 rounded-lg border border-green-100">
                       <p className="text-[10px] font-bold text-green-700 uppercase">Admin Reply:</p>
-                      <p className="text-green-900 font-medium">{ticketDetails.admin_reply}</p>
+                      <p className="text-green-900 font-medium">{ticketDetails.ticket_replies[0].message}</p>
                     </div>
                   )}
                   
