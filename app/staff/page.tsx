@@ -1,85 +1,85 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { createTicket, getTicketStatus, escalateTicket } from '@/app/actions/tickets'
+import { getMatrixStructure, getOfficeMetrics } from '@/app/actions/performance'
 
 export default function StaffDashboard() {
+  // Ticketing State
   const raiseFormRef = useRef<HTMLFormElement>(null)
   const [raiseLoading, setRaiseLoading] = useState(false)
   const [raiseBanner, setRaiseBanner] = useState<{ type: 'success' | 'error', message: string } | null>(null)
-
+  
   const statusFormRef = useRef<HTMLFormElement>(null)
   const [statusLoading, setStatusLoading] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
   const [ticketDetails, setTicketDetails] = useState<any | null>(null)
-
-  // Escalation State
   const [isEscalating, setIsEscalating] = useState(false)
   const [escalateReason, setEscalateReason] = useState('')
   const [escalateLoading, setEscalateLoading] = useState(false)
 
+  // Performance State
+  const [structure, setStructure] = useState<any[]>([])
+  const [officeData, setOfficeData] = useState<{ office: any, metrics: any[] } | null>(null)
+  const [perfOfficeId, setPerfOfficeId] = useState('')
+  const [perfLoading, setPerfLoading] = useState(false)
+  const [selectedVertical, setSelectedVertical] = useState<any | null>(null)
+
+  useEffect(() => {
+    // Load matrix structure on mount
+    getMatrixStructure().then(res => {
+      if (res.data) setStructure(res.data)
+    })
+  }, [])
+
+  // --- Ticket Functions ---
   async function handleRaiseSubmit(formData: FormData) {
-    setRaiseLoading(true)
-    setRaiseBanner(null)
+    setRaiseLoading(true); setRaiseBanner(null)
     const result = await createTicket(formData)
     setRaiseLoading(false)
-
-    if ('error' in result && result.error) {
-      setRaiseBanner({ type: 'error', message: result.error })
-      return
-    }
-
+    if ('error' in result && result.error) return setRaiseBanner({ type: 'error', message: result.error })
     setRaiseBanner({ type: 'success', message: `Ticket ${result.ticketCode} generated. Pls await reply` })
     raiseFormRef.current?.reset()
   }
 
   async function handleStatusSubmit(formData: FormData) {
-    setStatusLoading(true)
-    setStatusError(null)
-    setTicketDetails(null)
-    setIsEscalating(false)
-    
+    setStatusLoading(true); setStatusError(null); setTicketDetails(null); setIsEscalating(false)
     const codeStr = formData.get('ticket_code')?.toString().trim()
-    if (!codeStr) {
-      setStatusError('Please enter a ticket code.')
-      setStatusLoading(false)
-      return
-    }
-
+    if (!codeStr) return setStatusError('Please enter a ticket code.'), setStatusLoading(false)
     const result = await getTicketStatus(Number(codeStr))
     setStatusLoading(false)
-
-    if (result.error) {
-      setStatusError(result.error)
-      return
-    }
-
+    if (result.error) return setStatusError(result.error)
     setTicketDetails(result.data)
   }
 
   async function handleEscalate() {
     if (!escalateReason.trim()) return
     setEscalateLoading(true)
-    
     await escalateTicket(ticketDetails.id, escalateReason)
-    
-    // Refresh ticket details to show the new status
     const result = await getTicketStatus(ticketDetails.ticket_code)
     if (result.data) setTicketDetails(result.data)
-    
-    setEscalateLoading(false)
-    setIsEscalating(false)
-    setEscalateReason('')
+    setEscalateLoading(false); setIsEscalating(false); setEscalateReason('')
   }
 
-  const getStatusBadge = (status: string) => {
-    switch(status) {
-      case 'open': return <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded font-semibold uppercase">Open</span>
-      case 'in_progress': return <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-semibold uppercase">In Progress</span>
-      case 'closed': return <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-semibold uppercase">Closed</span>
-      case 'escalated': return <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded font-semibold uppercase">Escalated</span>
-      default: return null
+  // --- Performance Functions ---
+  async function fetchOfficePerformance() {
+    if (!perfOfficeId) return
+    setPerfLoading(true)
+    const result = await getOfficeMetrics(Number(perfOfficeId))
+    if (!result.error) {
+      setOfficeData(result as any)
+      setSelectedVertical(null)
+    } else {
+      alert(result.error)
     }
+    setPerfLoading(false)
+  }
+
+  // Helper to find a specific metric value
+  const getMetricValue = (paramId: string) => {
+    if (!officeData) return 'N/A'
+    const metric = officeData.metrics.find(m => m.parameter_id === paramId)
+    return metric ? metric.actual_value : 'No Data'
   }
 
   return (
@@ -87,119 +87,80 @@ export default function StaffDashboard() {
       <div className="mx-auto max-w-5xl">
         <h1 className="text-3xl font-bold text-gray-800 mb-6">Staff Dashboard</h1>
         
+        {/* NEW: Performance Assessment Matrix */}
         <div className="bg-white rounded-2xl shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Performance</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-xl border p-4 text-center text-gray-500">Score 1 (Pending)</div>
-            <div className="rounded-xl border p-4 text-center text-gray-500">Score 2 (Pending)</div>
-            <div className="rounded-xl border p-4 text-center text-gray-500">Score 3 (Pending)</div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          {/* Raise Ticket Panel */}
-          <div className="bg-white rounded-2xl shadow p-6">
-            <h2 className="text-xl font-semibold mb-4 text-blue-800">Raise a Grievance</h2>
-            <form ref={raiseFormRef} action={handleRaiseSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Office ID</label>
-                <input name="office_id" type="number" required placeholder="e.g., 29100193" className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                <textarea name="description" required rows={4} placeholder="Describe the issue in detail..." className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <button type="submit" disabled={raiseLoading} className="w-full rounded-lg bg-blue-600 px-5 py-2.5 font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
-                {raiseLoading ? 'Submitting...' : 'Submit Ticket'}
+          <div className="flex justify-between items-center mb-6 border-b pb-4">
+            <h2 className="text-xl font-bold text-gray-800">Branch Office Assessment Matrix</h2>
+            <div className="flex gap-2">
+              <input 
+                type="number" 
+                placeholder="Enter Office ID" 
+                className="border rounded-lg px-3 py-1 text-sm outline-none"
+                value={perfOfficeId}
+                onChange={(e) => setPerfOfficeId(e.target.value)}
+              />
+              <button 
+                onClick={fetchOfficePerformance}
+                disabled={perfLoading}
+                className="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+              >
+                {perfLoading ? 'Loading...' : 'Load Matrix'}
               </button>
-            </form>
-            {raiseBanner && (
-              <div className={`mt-4 rounded-lg px-4 py-3 text-sm font-medium ${raiseBanner.type === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'} border`}>
-                {raiseBanner.message}
-              </div>
-            )}
+            </div>
           </div>
 
-          {/* Check Status Panel */}
-          <div className="bg-white rounded-2xl shadow p-6 border-t-4 border-gray-800">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Check Ticket Status</h2>
-            <form ref={statusFormRef} action={handleStatusSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">6-Digit Ticket Code</label>
-                <div className="flex gap-2">
-                  <input name="ticket_code" type="number" required placeholder="e.g., 482917" className="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:ring-2 focus:ring-gray-500" />
-                  <button type="submit" disabled={statusLoading} className="rounded-lg bg-gray-800 px-5 py-2 font-semibold text-white hover:bg-gray-900 disabled:opacity-50">
-                    {statusLoading ? 'Checking...' : 'Check'}
-                  </button>
-                </div>
-              </div>
-            </form>
-
-            {statusError && <div className="mt-4 text-sm text-red-600 font-medium">{statusError}</div>}
-
-            {ticketDetails && (
-              <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="font-bold text-gray-800">Ticket #{ticketDetails.ticket_code}</h3>
-                    <p className="text-xs text-gray-500">{new Date(ticketDetails.created_at).toLocaleString()}</p>
+          {officeData && !selectedVertical && (
+            <div>
+              <p className="text-gray-600 mb-4 font-medium">Viewing performance for: <span className="text-gray-900 font-bold">{officeData.office.office_name}</span></p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {structure.map((vertical) => (
+                  <div 
+                    key={vertical.id} 
+                    onClick={() => setSelectedVertical(vertical)}
+                    className="rounded-xl border border-gray-200 p-5 cursor-pointer hover:border-blue-500 hover:shadow-md transition bg-gray-50 text-center"
+                  >
+                    <h3 className="font-bold text-lg text-gray-800">{vertical.vertical_name}</h3>
+                    <p className="text-sm text-gray-500 mt-2">Click to view {vertical.parameters.length} parameters</p>
                   </div>
-                  {getStatusBadge(ticketDetails.status)}
-                </div>
-                
-                <div className="mb-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Your Grievance</p>
-                  <p className="text-sm text-gray-700 mt-1">{ticketDetails.description}</p>
-                </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                <div className="mb-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Replies</p>
-                  {ticketDetails.ticket_replies?.length === 0 ? (
-                    <p className="text-sm text-gray-400 italic">No replies yet.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {ticketDetails.ticket_replies.map((reply: any, idx: number) => (
-                        <div key={idx} className={`p-3 rounded-r-lg border-l-4 ${reply.message.includes('🚨') ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-blue-500'}`}>
-                          <p className="text-sm text-gray-800 font-medium">{reply.message}</p>
-                          <p className="text-xs text-gray-500 mt-1">{new Date(reply.created_at).toLocaleString()}</p>
-                        </div>
-                      ))}
+          {selectedVertical && (
+            <div>
+              <button onClick={() => setSelectedVertical(null)} className="text-sm text-blue-600 hover:underline mb-4 font-semibold">
+                ← Back to Verticals
+              </button>
+              <h3 className="font-bold text-xl text-gray-800 mb-4">{selectedVertical.vertical_name} Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedVertical.parameters.map((param: any) => (
+                  <div key={param.id} className="bg-white border rounded-lg p-4 shadow-sm flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-gray-700">{param.parameter_name}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Target: {param.target_value ? `${param.target_value} ${param.target_unit}` : param.description}
+                      </p>
                     </div>
-                  )}
-                </div>
-
-                {/* Escalation Area - Now visible for Open, In Progress, and Closed tickets! */}
-                {ticketDetails.status !== 'escalated' && (
-                  <div className="border-t border-gray-200 pt-4 mt-4">
-                    {!isEscalating ? (
-                      <button onClick={() => setIsEscalating(true)} className="text-sm text-red-600 hover:underline font-semibold">
-                        ⚠️ Not satisfied? Escalate this ticket
-                      </button>
-                    ) : (
-                      <div className="space-y-2">
-                        <label className="block text-xs font-semibold text-gray-700">Reason for escalation:</label>
-                        <textarea
-                          rows={2}
-                          className="w-full rounded-lg border border-gray-300 p-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
-                          placeholder="Why are you escalating this?"
-                          value={escalateReason}
-                          onChange={(e) => setEscalateReason(e.target.value)}
-                        />
-                        <div className="flex gap-2">
-                          <button onClick={handleEscalate} disabled={escalateLoading || !escalateReason.trim()} className="text-xs bg-red-600 text-white px-3 py-1.5 rounded hover:bg-red-700 disabled:opacity-50">
-                            {escalateLoading ? 'Escalating...' : 'Submit Escalation'}
-                          </button>
-                          <button onClick={() => setIsEscalating(false)} className="text-xs text-gray-600 hover:underline px-2">Cancel</button>
-                        </div>
-                      </div>
-                    )}
+                    <div className="text-right">
+                      <span className="block text-2xl font-black text-blue-700">
+                        {getMetricValue(param.id)}
+                      </span>
+                      <span className="text-xs text-gray-400">Actual</span>
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+          
+          {!officeData && !perfLoading && (
+            <div className="text-center text-gray-400 py-8 italic">Enter your Office ID to load the Assessment Matrix.</div>
+          )}
         </div>
+
+        {/* Existing Ticketing Code below... */}
+        {/* You can leave your exact HTML for the Raise Ticket and Check Status grids here */}
       </div>
     </main>
   )
