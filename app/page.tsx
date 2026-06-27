@@ -22,7 +22,7 @@ export default function LoginPage() {
         router.push(`/staff?office_id=${result.office_id}`)
       }
     } else {
-      alert('Invalid Passcode')
+      alert('Invalid ID')
       setLoading(false)
       setPasscode('')
     }
@@ -40,11 +40,11 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="relative">
             <input 
-              type="password" 
-              placeholder="Enter Passcode" 
+              type="text" 
+              placeholder="Enter Office ID" 
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
-              className="w-full p-5 rounded-2xl bg-white/90 outline-none text-center text-2xl font-bold tracking-widest focus:ring-4 focus:ring-blue-300 transition-all shadow-inner" 
+              className="w-full p-5 rounded-2xl bg-white/90 outline-none text-center text-xl font-bold tracking-widest focus:ring-4 focus:ring-blue-300 transition-all shadow-inner" 
             />
           </div>
           

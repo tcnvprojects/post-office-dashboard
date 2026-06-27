@@ -8,10 +8,11 @@ const supabase = createClient(
 )
 
 export async function verifyPasscode(passcode: string) {
+  // Matching the input passcode directly against the office_id column
   const { data, error } = await supabase
     .from('users') 
     .select('role, office_id')
-    .eq('passcode', passcode)
+    .eq('office_id', passcode)
     .eq('is_active', true)
     .single()
 
