@@ -1,15 +1,24 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createTicket, getTicketStatus, escalateTicket } from '@/app/actions/tickets'
 import { getMatrixStructure, getOfficeMetrics } from '@/app/actions/performance'
 
 export default function StaffDashboard() {
-  // Ticketing State
+  const searchParams = useSearchParams()
+  const officeId = searchParams.get('office_id')
+
+  // --- Performance State ---
+  const [structure, setStructure] = useState<any[]>([])
+  const [officeData, setOfficeData] = useState<{ office: any, metrics: any[] } | null>(null)
+  const [perfLoading, setPerfLoading] = useState(false)
+  const [selectedVertical, setSelectedVertical] = useState<any | null>(null)
+
+  // --- Ticket State ---
   const raiseFormRef = useRef<HTMLFormElement>(null)
   const [raiseLoading, setRaiseLoading] = useState(false)
   const [raiseBanner, setRaiseBanner] = useState<{ type: 'success' | 'error', message: string } | null>(null)
-  
   const statusFormRef = useRef<HTMLFormElement>(null)
   const [statusLoading, setStatusLoading] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
@@ -18,149 +27,108 @@ export default function StaffDashboard() {
   const [escalateReason, setEscalateReason] = useState('')
   const [escalateLoading, setEscalateLoading] = useState(false)
 
-  // Performance State
-  const [structure, setStructure] = useState<any[]>([])
-  const [officeData, setOfficeData] = useState<{ office: any, metrics: any[] } | null>(null)
-  const [perfOfficeId, setPerfOfficeId] = useState('')
-  const [perfLoading, setPerfLoading] = useState(false)
-  const [selectedVertical, setSelectedVertical] = useState<any | null>(null)
-
+  // Auto-load data on mount
   useEffect(() => {
-    // Load matrix structure on mount
-    getMatrixStructure().then(res => {
-      if (res.data) setStructure(res.data)
-    })
-  }, [])
+    async function loadData() {
+      // 1. Load Matrix Structure
+      const structRes = await getMatrixStructure()
+      if (structRes.data) setStructure(structRes.data)
 
-  // --- Ticket Functions ---
+      // 2. Auto-load Performance if officeId is present
+      if (officeId) {
+        setPerfLoading(true)
+        const perfRes = await getOfficeMetrics(Number(officeId))
+        if (!perfRes.error) setOfficeData(perfRes as any)
+        setPerfLoading(false)
+      }
+    }
+    loadData()
+  }, [officeId])
+
+  // --- Logic Functions ---
   async function handleRaiseSubmit(formData: FormData) {
     setRaiseLoading(true); setRaiseBanner(null)
+    formData.append('office_id', officeId || '') // Ensure office ID is sent
     const result = await createTicket(formData)
     setRaiseLoading(false)
     if ('error' in result && result.error) return setRaiseBanner({ type: 'error', message: result.error })
-    setRaiseBanner({ type: 'success', message: `Ticket ${result.ticketCode} generated. Pls await reply` })
+    setRaiseBanner({ type: 'success', message: `Ticket ${result.ticketCode} generated.` })
     raiseFormRef.current?.reset()
   }
 
   async function handleStatusSubmit(formData: FormData) {
-    setStatusLoading(true); setStatusError(null); setTicketDetails(null); setIsEscalating(false)
-    const codeStr = formData.get('ticket_code')?.toString().trim()
-    if (!codeStr) return setStatusError('Please enter a ticket code.'), setStatusLoading(false)
-    const result = await getTicketStatus(Number(codeStr))
+    setStatusLoading(true); setStatusError(null); setTicketDetails(null)
+    const result = await getTicketStatus(Number(formData.get('ticket_code')))
     setStatusLoading(false)
     if (result.error) return setStatusError(result.error)
     setTicketDetails(result.data)
   }
 
-  async function handleEscalate() {
-    if (!escalateReason.trim()) return
-    setEscalateLoading(true)
-    await escalateTicket(ticketDetails.id, escalateReason)
-    const result = await getTicketStatus(ticketDetails.ticket_code)
-    if (result.data) setTicketDetails(result.data)
-    setEscalateLoading(false); setIsEscalating(false); setEscalateReason('')
-  }
-
-  // --- Performance Functions ---
-  async function fetchOfficePerformance() {
-    if (!perfOfficeId) return
-    setPerfLoading(true)
-    const result = await getOfficeMetrics(Number(perfOfficeId))
-    if (!result.error) {
-      setOfficeData(result as any)
-      setSelectedVertical(null)
-    } else {
-      alert(result.error)
-    }
-    setPerfLoading(false)
-  }
-
-  // Helper to find a specific metric value
+  // --- Render Helpers ---
   const getMetricValue = (paramId: string) => {
     if (!officeData) return 'N/A'
-    const metric = officeData.metrics.find(m => m.parameter_id === paramId)
-    return metric ? metric.actual_value : 'No Data'
+    const metric = officeData.metrics.find((m: any) => m.parameter_id === paramId)
+    return metric ? metric.actual_value : '—'
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-6">
-      <div className="mx-auto max-w-5xl">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">Staff Dashboard</h1>
-        
-        {/* NEW: Performance Assessment Matrix */}
-        <div className="bg-white rounded-2xl shadow p-6 mb-6">
-          <div className="flex justify-between items-center mb-6 border-b pb-4">
-            <h2 className="text-xl font-bold text-gray-800">Branch Office Assessment Matrix</h2>
-            <div className="flex gap-2">
-              <input 
-                type="number" 
-                placeholder="Enter Office ID" 
-                className="border rounded-lg px-3 py-1 text-sm outline-none"
-                value={perfOfficeId}
-                onChange={(e) => setPerfOfficeId(e.target.value)}
-              />
-              <button 
-                onClick={fetchOfficePerformance}
-                disabled={perfLoading}
-                className="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
-              >
-                {perfLoading ? 'Loading...' : 'Load Matrix'}
-              </button>
-            </div>
+    <main className="min-h-screen bg-gray-50 p-4 md:p-6 pb-20">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <header className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
+          <h1 className="text-xl font-bold text-gray-800">Office {officeId} Dashboard</h1>
+          <a href="/" className="text-sm text-gray-500 hover:underline">Logout</a>
+        </header>
+
+        {/* PERFORMANCE SECTION */}
+        <section className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">Assessment Matrix</h2>
+          {perfLoading ? <p>Loading data...</p> : (
+            <>
+              {!selectedVertical ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {structure.map((v) => (
+                    <button key={v.id} onClick={() => setSelectedVertical(v)} className="bg-blue-50 hover:bg-blue-100 p-4 rounded-xl text-center transition">
+                      <p className="font-bold text-blue-900">{v.vertical_name}</p>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div>
+                  <button onClick={() => setSelectedVertical(null)} className="text-sm text-blue-600 mb-4">← Back</button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {selectedVertical.parameters.map((p: any) => (
+                      <div key={p.id} className="border p-3 rounded-lg flex justify-between">
+                        <span className="text-sm font-medium">{p.parameter_name}</span>
+                        <span className="font-bold text-blue-600">{getMetricValue(p.id)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* TICKETING SECTION */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <h2 className="text-lg font-bold mb-4">Raise Grievance</h2>
+            <form ref={raiseFormRef} action={handleRaiseSubmit} className="space-y-3">
+              <textarea name="description" required rows={3} placeholder="Describe issue..." className="w-full border rounded-lg p-2" />
+              <button className="w-full bg-blue-600 text-white py-2 rounded-lg font-bold">Submit Ticket</button>
+            </form>
+            {raiseBanner && <p className="mt-2 text-sm text-green-600">{raiseBanner.message}</p>}
           </div>
 
-          {officeData && !selectedVertical && (
-            <div>
-              <p className="text-gray-600 mb-4 font-medium">Viewing performance for: <span className="text-gray-900 font-bold">{officeData.office.office_name}</span></p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {structure.map((vertical) => (
-                  <div 
-                    key={vertical.id} 
-                    onClick={() => setSelectedVertical(vertical)}
-                    className="rounded-xl border border-gray-200 p-5 cursor-pointer hover:border-blue-500 hover:shadow-md transition bg-gray-50 text-center"
-                  >
-                    <h3 className="font-bold text-lg text-gray-800">{vertical.vertical_name}</h3>
-                    <p className="text-sm text-gray-500 mt-2">Click to view {vertical.parameters.length} parameters</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {selectedVertical && (
-            <div>
-              <button onClick={() => setSelectedVertical(null)} className="text-sm text-blue-600 hover:underline mb-4 font-semibold">
-                ← Back to Verticals
-              </button>
-              <h3 className="font-bold text-xl text-gray-800 mb-4">{selectedVertical.vertical_name} Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {selectedVertical.parameters.map((param: any) => (
-                  <div key={param.id} className="bg-white border rounded-lg p-4 shadow-sm flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-gray-700">{param.parameter_name}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Target: {param.target_value ? `${param.target_value} ${param.target_unit}` : param.description}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className="block text-2xl font-black text-blue-700">
-                        {getMetricValue(param.id)}
-                      </span>
-                      <span className="text-xs text-gray-400">Actual</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {!officeData && !perfLoading && (
-            <div className="text-center text-gray-400 py-8 italic">Enter your Office ID to load the Assessment Matrix.</div>
-          )}
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <h2 className="text-lg font-bold mb-4">Check Status</h2>
+            <form action={handleStatusSubmit} className="flex gap-2">
+              <input name="ticket_code" type="number" placeholder="6-digit code" className="w-full border rounded-lg p-2" />
+              <button className="bg-gray-800 text-white px-4 py-2 rounded-lg">Check</button>
+            </form>
+            {ticketDetails && <div className="mt-4 p-3 bg-gray-50 rounded text-sm">Status: {ticketDetails.status}</div>}
+          </div>
         </div>
-
-        {/* Existing Ticketing Code below... */}
-        {/* You can leave your exact HTML for the Raise Ticket and Check Status grids here */}
       </div>
     </main>
   )
