@@ -169,8 +169,8 @@ export default function StaffDashboard() {
                   )}
                 </div>
 
-                {/* Escalation Area */}
-                {ticketDetails.status !== 'escalated' && ticketDetails.status !== 'closed' && (
+                {/* Escalation Area - Now visible for Open, In Progress, and Closed tickets! */}
+                {ticketDetails.status !== 'escalated' && (
                   <div className="border-t border-gray-200 pt-4 mt-4">
                     {!isEscalating ? (
                       <button onClick={() => setIsEscalating(true)} className="text-sm text-red-600 hover:underline font-semibold">
