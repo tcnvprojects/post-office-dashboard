@@ -1,22 +1,23 @@
 'use client'
-// Add this line here
+
 export const dynamic = 'force-dynamic'
-import { useRef, useState, useEffect } from 'react'
+
+import { useRef, useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createTicket, getTicketStatus, escalateTicket } from '@/app/actions/tickets'
 import { getMatrixStructure, getOfficeMetrics } from '@/app/actions/performance'
 
-export default function StaffDashboard() {
+// 1. Move all your logic into this 'Content' component
+function DashboardContent() {
   const searchParams = useSearchParams()
   const officeId = searchParams.get('office_id')
 
-  // --- Performance State ---
+  // --- All your existing states ---
   const [structure, setStructure] = useState<any[]>([])
   const [officeData, setOfficeData] = useState<{ office: any, metrics: any[] } | null>(null)
   const [perfLoading, setPerfLoading] = useState(false)
   const [selectedVertical, setSelectedVertical] = useState<any | null>(null)
 
-  // --- Ticket State ---
   const raiseFormRef = useRef<HTMLFormElement>(null)
   const [raiseLoading, setRaiseLoading] = useState(false)
   const [raiseBanner, setRaiseBanner] = useState<{ type: 'success' | 'error', message: string } | null>(null)
@@ -24,18 +25,12 @@ export default function StaffDashboard() {
   const [statusLoading, setStatusLoading] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
   const [ticketDetails, setTicketDetails] = useState<any | null>(null)
-  const [isEscalating, setIsEscalating] = useState(false)
-  const [escalateReason, setEscalateReason] = useState('')
-  const [escalateLoading, setEscalateLoading] = useState(false)
 
-  // Auto-load data on mount
+  // --- All your existing logic (useEffect, handlers) ---
   useEffect(() => {
     async function loadData() {
-      // 1. Load Matrix Structure
       const structRes = await getMatrixStructure()
       if (structRes.data) setStructure(structRes.data)
-
-      // 2. Auto-load Performance if officeId is present
       if (officeId) {
         setPerfLoading(true)
         const perfRes = await getOfficeMetrics(Number(officeId))
@@ -46,10 +41,9 @@ export default function StaffDashboard() {
     loadData()
   }, [officeId])
 
-  // --- Logic Functions ---
   async function handleRaiseSubmit(formData: FormData) {
     setRaiseLoading(true); setRaiseBanner(null)
-    formData.append('office_id', officeId || '') // Ensure office ID is sent
+    formData.append('office_id', officeId || '')
     const result = await createTicket(formData)
     setRaiseLoading(false)
     if ('error' in result && result.error) return setRaiseBanner({ type: 'error', message: result.error })
@@ -65,13 +59,13 @@ export default function StaffDashboard() {
     setTicketDetails(result.data)
   }
 
-  // --- Render Helpers ---
   const getMetricValue = (paramId: string) => {
     if (!officeData) return 'N/A'
     const metric = officeData.metrics.find((m: any) => m.parameter_id === paramId)
     return metric ? metric.actual_value : '—'
   }
 
+  // --- Your existing Return/JSX here ---
   return (
     <main className="min-h-screen bg-gray-50 p-4 md:p-6 pb-20">
       <div className="mx-auto max-w-4xl space-y-6">
@@ -132,5 +126,14 @@ export default function StaffDashboard() {
         </div>
       </div>
     </main>
+  )
+}
+
+// 2. This is the new wrapper that makes the build succeed
+export default function StaffDashboard() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center">Loading dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
   )
 }
