@@ -44,9 +44,7 @@ function DashboardContent() {
   async function checkTicketStatus(formData: FormData) {
     const code = Number(formData.get('code'))
     const res = await getTicketStatus(code)
-    if (res?.data) {
-      setTicketDetails(res.data)
-    }
+    if (res?.data) setTicketDetails(res.data)
   }
 
   const calculateVerticalScore = (v: any) => {
@@ -61,11 +59,16 @@ function DashboardContent() {
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
       <header className="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-        <h1 className="font-bold text-gray-800 text-lg">Dak Connect</h1>
+        {/* LOGO IN HEADER */}
+        <div className="flex items-center gap-2">
+            <img src="/logo.jpg" alt="Logo" className="h-8 w-8 object-contain" />
+            <h1 className="font-black text-gray-800 text-lg">Dak Connect</h1>
+        </div>
+        
         <div className="flex items-center gap-4">
           <div className="flex bg-gray-100 p-1 rounded-full">
-            <button onClick={() => setView('performance')} className={`px-5 py-2 rounded-full text-xs font-bold transition ${view === 'performance' ? 'bg-white shadow-sm' : ''}`}>STATS</button>
-            <button onClick={() => setView('grievance')} className={`px-5 py-2 rounded-full text-xs font-bold transition ${view === 'grievance' ? 'bg-white shadow-sm' : ''}`}>GRIEVANCE</button>
+            <button onClick={() => setView('performance')} className={`px-5 py-2 rounded-full text-xs font-bold transition ${view === 'performance' ? 'bg-yellow-400 text-black shadow-sm' : ''}`}>STATS</button>
+            <button onClick={() => setView('grievance')} className={`px-5 py-2 rounded-full text-xs font-bold transition ${view === 'grievance' ? 'bg-yellow-400 text-black shadow-sm' : ''}`}>GRIEVANCE</button>
           </div>
           <a href="/" className="text-xs font-bold text-red-600 hover:text-red-800">LOGOUT</a>
         </div>
@@ -76,8 +79,8 @@ function DashboardContent() {
           <div className="space-y-4">
             {!selectedVertical ? (
               <>
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-3xl text-white shadow-lg">
-                  <p className="text-blue-100 text-xs font-bold uppercase tracking-widest">Overall Score</p>
+                <div className="bg-gradient-to-br from-red-600 to-red-800 p-8 rounded-3xl text-white shadow-lg">
+                  <p className="text-yellow-300 text-xs font-bold uppercase tracking-widest">Overall Score</p>
                   <h2 className="text-5xl font-black mt-2">88%</h2>
                 </div>
                 {structure.map((v: any) => {
@@ -85,18 +88,18 @@ function DashboardContent() {
                   return (
                     <button key={v.id} onClick={() => setSelectedVertical(v)} className="w-full bg-white p-6 rounded-3xl shadow-sm border text-left">
                       <div className="flex justify-between mb-3 font-bold text-gray-800"><span>{v.vertical_name}</span><span>{s}%</span></div>
-                      <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden"><div className="h-full bg-green-500 transition-all duration-1000" style={{ width: `${s}%` }} /></div>
+                      <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden"><div className="h-full bg-red-600 transition-all duration-1000" style={{ width: `${s}%` }} /></div>
                     </button>
                   )
                 })}
               </>
             ) : (
               <div className="bg-white p-8 rounded-3xl shadow-sm border">
-                <button onClick={() => setSelectedVertical(null)} className="text-blue-600 font-bold mb-6 underline">← Back</button>
+                <button onClick={() => setSelectedVertical(null)} className="text-red-600 font-bold mb-6 underline">← Back</button>
                 <h3 className="font-black text-xl mb-4">{selectedVertical.vertical_name}</h3>
                 {selectedVertical.parameters?.map((p: any) => (
                   <div key={p.id} className="flex justify-between p-4 bg-gray-50 rounded-xl mb-2 font-bold text-sm">
-                    {p.parameter_name} <span className="text-blue-600">{officeData?.metrics?.find((m: any) => m.parameter_id === p.id)?.actual_value || '—'}</span>
+                    {p.parameter_name} <span className="text-red-600 font-bold">{officeData?.metrics?.find((m: any) => m.parameter_id === p.id)?.actual_value || '—'}</span>
                   </div>
                 ))}
               </div>
@@ -105,27 +108,22 @@ function DashboardContent() {
         ) : (
           <div className="bg-white p-8 rounded-3xl shadow-sm border space-y-6">
             <h2 className="font-black text-lg">Raise Grievance</h2>
-            {generatedTicketCode && (<div className="bg-green-50 p-4 rounded-xl text-sm font-bold text-center">Ticket Code: {generatedTicketCode}</div>)}
-            <form ref={formRef} action={handleRaise} className="space-y-4"><textarea name="description" required className="w-full border p-4 rounded-xl bg-gray-50 text-sm" rows={4} /><button className="bg-blue-600 text-white w-full py-4 rounded-xl font-bold">SUBMIT</button></form>
-            <div className="border-t pt-6"><form action={checkTicketStatus} className="flex gap-2"><input name="code" required className="border p-4 rounded-xl text-sm w-full" /><button className="bg-gray-800 text-white px-6 rounded-xl font-bold">CHECK</button></form>
+            {generatedTicketCode && (<div className="bg-yellow-50 p-4 rounded-xl text-sm font-bold text-center border border-yellow-200">Ticket Code: {generatedTicketCode}</div>)}
+            <form ref={formRef} action={handleRaise} className="space-y-4"><textarea name="description" required className="w-full border p-4 rounded-xl bg-gray-50 text-sm focus:ring-2 focus:ring-red-200 outline-none" rows={4} /><button className="bg-red-600 text-white w-full py-4 rounded-xl font-bold hover:bg-red-700">SUBMIT</button></form>
+            <div className="border-t pt-6"><form action={checkTicketStatus} className="flex gap-2"><input name="code" required className="border p-4 rounded-xl text-sm w-full" placeholder="Enter code" /><button className="bg-gray-800 text-white px-6 rounded-xl font-bold hover:bg-black">CHECK</button></form>
               {ticketDetails && (
                 <div className="mt-4 bg-gray-50 p-6 rounded-2xl text-sm space-y-2 border">
                   <p className="font-bold border-b pb-2">Status: {ticketDetails.status?.toUpperCase()}</p>
-                  
-                  {/* DISPLAY ORIGINAL GRIEVANCE */}
                   <div className="bg-white p-3 rounded-lg border">
                     <p className="text-[10px] font-bold text-gray-400 uppercase">Your Grievance:</p>
                     <p className="text-gray-800 font-medium">{ticketDetails.description}</p>
                   </div>
-
-                  {/* DISPLAY ADMIN REPLY FROM TICKET_REPLIES.MESSAGE */}
                   {ticketDetails.ticket_replies && ticketDetails.ticket_replies.length > 0 && (
-                    <div className="bg-green-50 p-3 rounded-lg border border-green-100">
-                      <p className="text-[10px] font-bold text-green-700 uppercase">Admin Reply:</p>
-                      <p className="text-green-900 font-medium">{ticketDetails.ticket_replies[0].message}</p>
+                    <div className="bg-red-50 p-3 rounded-lg border border-red-100">
+                      <p className="text-[10px] font-bold text-red-700 uppercase">Admin Reply:</p>
+                      <p className="text-red-900 font-medium">{ticketDetails.ticket_replies[0].message}</p>
                     </div>
                   )}
-                  
                   {ticketDetails.status === 'closed' && (!isEscalating ? (<button onClick={() => setIsEscalating(true)} className="text-red-600 underline font-bold text-xs">Escalate to re-open?</button>) : (<div className="flex gap-2"><input className="border p-2 rounded-lg" onChange={(e) => setEscalateReason(e.target.value)} /><button onClick={async () => { await escalateTicket(ticketDetails.id, escalateReason); alert('Escalated'); }} className="bg-red-600 text-white px-3 rounded-lg text-xs">SUBMIT</button></div>))}
                 </div>
               )}

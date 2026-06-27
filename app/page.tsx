@@ -2,68 +2,45 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { verifyPasscode } from './actions/auth'
+import { verifyPasscode } from '@/app/actions/auth'
 
 export default function LoginPage() {
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    
-    const result = await verifyPasscode(input)
-    
-    if (result.success) {
-      if (result.role === 'admin') {
-        router.push('/admin')
-      } else {
-        router.push(`/staff?office_id=${result.office_id}`)
-      }
+  async function handleLogin() {
+    const res = await verifyPasscode(input)
+    if (res.success) {
+      if (res.role === 'admin') router.push('/admin')
+      else router.push(`/staff?office_id=${res.office_id}`)
     } else {
-      alert('Invalid ID or Master Code')
-      setLoading(false)
-      setInput('')
+      alert('Invalid Code')
     }
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 flex items-center justify-center p-6">
-      <div className="bg-white/10 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-white/20 w-full max-w-sm text-center">
+    <main className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm border border-gray-100 text-center">
+        {/* LOGO ADDED */}
+        <img src="/logo.jpg" alt="Dak Connect" className="h-24 mx-auto mb-6 object-contain" />
         
-        <div className="mb-8">
-          <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Dak Connect</h1>
-          <p className="text-blue-100 font-medium text-sm uppercase tracking-widest">Management Portal</p>
-        </div>
+        <h1 className="text-2xl font-black text-gray-900 mb-2">Welcome Back</h1>
+        <p className="text-gray-500 text-sm mb-6">Enter your office code to continue</p>
         
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="relative">
-            <input 
-              type="text" 
-              placeholder="Enter Office ID" 
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="w-full p-5 rounded-2xl bg-white/90 outline-none text-center text-xl font-bold tracking-widest focus:ring-4 focus:ring-blue-300 transition-all shadow-inner" 
-            />
-          </div>
-          
-          <button 
-            type="submit"
-            disabled={loading}
-            className="w-full p-5 bg-white text-blue-900 font-black rounded-2xl shadow-lg hover:bg-blue-50 active:scale-95 transition-all flex justify-center items-center"
-          >
-            {loading ? (
-              <span className="animate-pulse">VERIFYING...</span>
-            ) : (
-              'ACCESS PORTAL'
-            )}
-          </button>
-        </form>
-
-        <p className="mt-8 text-blue-200 text-xs font-semibold uppercase">
-          Chengalpattu West Sub Division
-        </p>
+        <input 
+          type="text" 
+          value={input} 
+          onChange={(e) => setInput(e.target.value)}
+          className="w-full bg-gray-100 border-0 p-4 rounded-xl mb-4 font-bold text-center text-lg outline-none focus:ring-2 focus:ring-red-500"
+          placeholder="000000"
+        />
+        
+        <button 
+          onClick={handleLogin} 
+          className="w-full py-4 bg-red-600 text-white rounded-xl font-black shadow-lg hover:bg-red-700 transition active:scale-95"
+        >
+          LOGIN
+        </button>
       </div>
     </main>
   )
