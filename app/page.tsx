@@ -33,7 +33,7 @@ export default function LoginPage() {
       <div className="bg-white/10 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-white/20 w-full max-w-sm text-center">
         
         <div className="mb-8">
-          <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Anjal Payanam</h1>
+          <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Dak Connect</h1>
           <p className="text-blue-100 font-medium text-sm uppercase tracking-widest">Management Portal</p>
         </div>
         
