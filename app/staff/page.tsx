@@ -23,7 +23,7 @@ function DashboardContent() {
   useEffect(() => {
     async function fetchData() {
       const s = await getMatrixStructure()
-      if (s && s.data) setStructure(s.data)
+      if (s?.data) setStructure(s.data)
       if (officeId) {
         const m = await getOfficeMetrics(Number(officeId))
         if (m && !m.error) setOfficeData(m)
@@ -35,24 +35,20 @@ function DashboardContent() {
   async function handleRaise(formData: FormData) {
     formData.append('office_id', officeId || '')
     const res = await createTicket(formData)
-    
-    // FIXED: Corrected access to match your type definition
-    if (res && res.success) {
+    if (res?.success) {
       setGeneratedTicketCode(res.ticketCode ? res.ticketCode.toString() : '')
       if (formRef.current) formRef.current.reset()
-    } else {
-      alert('Failed to submit ticket.')
     }
   }
 
   async function checkTicketStatus(formData: FormData) {
     const code = Number(formData.get('code'))
     const res = await getTicketStatus(code)
-    if (res && res.data) setTicketDetails(res.data)
+    if (res?.data) setTicketDetails(res.data)
   }
 
   const calculateVerticalScore = (v: any) => {
-    if (!officeData || !officeData.metrics) return 0
+    if (!officeData?.metrics) return 0
     const pIds = v.parameters?.map((p: any) => p.id) || []
     const ms = officeData.metrics.filter((m: any) => pIds.includes(m.parameter_id))
     if (ms.length === 0) return 0
@@ -108,10 +104,24 @@ function DashboardContent() {
             <form ref={formRef} action={handleRaise} className="space-y-4"><textarea name="description" required className="w-full border p-4 rounded-xl bg-gray-50 text-sm" rows={4} /><button className="bg-blue-600 text-white w-full py-4 rounded-xl font-bold">SUBMIT</button></form>
             <div className="border-t pt-6"><form action={checkTicketStatus} className="flex gap-2"><input name="code" required className="border p-4 rounded-xl text-sm w-full" /><button className="bg-gray-800 text-white px-6 rounded-xl font-bold">CHECK</button></form>
               {ticketDetails && (
-                <div className="mt-4 bg-gray-50 p-6 rounded-2xl text-sm space-y-2 border">
-                  <p className="font-bold">Status: {ticketDetails.status?.toUpperCase()}</p>
-                  {ticketDetails.admin_reply && (<div className="mt-2 bg-white p-3 rounded-lg border"><p className="text-[10px] font-bold text-gray-400 uppercase">Reply:</p><p>{ticketDetails.admin_reply}</p></div>)}
-                  {ticketDetails.status === 'closed' && (!isEscalating ? (<button onClick={() => setIsEscalating(true)} className="text-red-600 underline font-bold text-xs">Escalate?</button>) : (<div className="flex gap-2"><input className="border p-2 rounded-lg" onChange={(e) => setEscalateReason(e.target.value)} /><button onClick={async () => { await escalateTicket(ticketDetails.id, escalateReason); alert('Escalated'); }} className="bg-red-600 text-white px-3 rounded-lg text-xs">SUBMIT</button></div>))}
+                <div className="mt-4 bg-gray-50 p-6 rounded-2xl text-sm space-y-4 border">
+                  <p className="font-bold border-b pb-2">Status: {ticketDetails.status?.toUpperCase()}</p>
+                  
+                  {/* DISPLAY ORIGINAL GRIEVANCE */}
+                  <div className="bg-white p-3 rounded-lg border">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Your Grievance:</p>
+                    <p className="text-gray-800 font-medium">{ticketDetails.description}</p>
+                  </div>
+
+                  {/* DISPLAY ADMIN REPLY */}
+                  {ticketDetails.admin_reply && (
+                    <div className="bg-green-50 p-3 rounded-lg border border-green-100">
+                      <p className="text-[10px] font-bold text-green-700 uppercase">Admin Reply:</p>
+                      <p className="text-green-900 font-medium">{ticketDetails.admin_reply}</p>
+                    </div>
+                  )}
+                  
+                  {ticketDetails.status === 'closed' && (!isEscalating ? (<button onClick={() => setIsEscalating(true)} className="text-red-600 underline font-bold text-xs">Escalate to re-open?</button>) : (<div className="flex gap-2"><input className="border p-2 rounded-lg" onChange={(e) => setEscalateReason(e.target.value)} /><button onClick={async () => { await escalateTicket(ticketDetails.id, escalateReason); alert('Escalated'); }} className="bg-red-600 text-white px-3 rounded-lg text-xs">SUBMIT</button></div>))}
                 </div>
               )}
             </div>
