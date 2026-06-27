@@ -61,3 +61,27 @@ export async function createTicket(formData: FormData) {
 
   return { success: true, ticketCode }
 }
+export async function getTicketStatus(ticketCode: number) {
+  const { data: ticket, error: ticketError } = await supabase
+    .from('tickets')
+    .select(`
+      *,
+      offices ( office_name ),
+      ticket_replies ( message, created_at )
+    `)
+    .eq('ticket_code', ticketCode)
+    .maybeSingle()
+
+  if (ticketError || !ticket) {
+    return { error: 'Ticket not found. Please check the 6-digit code.' }
+  }
+
+  // Sort replies chronologically (oldest to newest)
+  if (ticket.ticket_replies) {
+    ticket.ticket_replies.sort((a: any, b: any) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+  }
+
+  return { data: ticket }
+}
