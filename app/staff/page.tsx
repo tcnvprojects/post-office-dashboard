@@ -8,77 +8,61 @@ import { getMatrixStructure, getOfficeMetrics } from '@/app/actions/performance'
 function DashboardContent() {
   const searchParams = useSearchParams()
   const officeId = searchParams.get('office_id')
-
-  const [structure, setStructure] = useState<any[]>([])
-  const [officeData, setOfficeData] = useState<{ metrics: any[] } | null>(null)
-  const [ticketDetails, setTicketDetails] = useState<any | null>(null)
-  const [isEscalating, setIsEscalating] = useState(false)
-  const [escalateReason, setEscalateReason] = useState('')
+  const [perf, setPerf] = useState<any>(null)
+  const [ticketDetails, setTicketDetails] = useState<any>(null)
+  const [reason, setReason] = useState('')
 
   useEffect(() => {
     async function load() {
-      const struct = await getMatrixStructure(); if (struct.data) setStructure(struct.data)
       if (officeId) {
-        const perf = await getOfficeMetrics(Number(officeId))
-        if (!perf.error) setOfficeData(perf as any)
+        const res = await getOfficeMetrics(Number(officeId))
+        if (!res.error) setPerf(res)
       }
     }
     load()
   }, [officeId])
 
-  async function handleStatusSubmit(formData: FormData) {
-    const result = await getTicketStatus(Number(formData.get('ticket_code')))
-    if (!result.error) setTicketDetails(result.data)
-  }
-
-  async function handleEscalate() {
-    await escalateTicket(ticketDetails.id, escalateReason)
-    const result = await getTicketStatus(ticketDetails.ticket_code)
-    setTicketDetails(result.data)
-    setIsEscalating(false)
+  async function handleStatus(formData: FormData) {
+    const res = await getTicketStatus(Number(formData.get('code')))
+    if (!res.error) setTicketDetails(res.data)
   }
 
   return (
     <main className="p-6 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-bold">Office {officeId} Dashboard</h1>
-        <a href="/" className="text-red-600 font-bold">Logout</a>
+      <div className="flex justify-between mb-6"><h1 className="font-bold text-xl">Office {officeId}</h1><a href="/" className="text-red-600">Logout</a></div>
+      
+      <div className="bg-white p-6 rounded-xl shadow mb-6">
+        <h2 className="font-bold mb-4">Performance Metrics</h2>
+        {perf ? <p>Data loaded for {perf.office.office_name}</p> : <p>Loading...</p>}
       </div>
 
-      {/* Ticket Result Area - This is where the replies and escalation button are */}
-      {ticketDetails && (
-        <div className="bg-white p-6 rounded-xl shadow mb-6 border-l-4 border-blue-500">
-          <h3 className="font-bold">Ticket #{ticketDetails.ticket_code} - {ticketDetails.status}</h3>
-          <p className="mt-2 text-sm">{ticketDetails.description}</p>
-          
-          {/* History */}
-          <div className="mt-4 space-y-2">
-            {ticketDetails.ticket_replies?.map((r: any, i: number) => (
-              <p key={i} className="text-sm bg-gray-100 p-2 rounded"><strong>Admin:</strong> {r.message}</p>
-            ))}
-          </div>
-
-          {/* Escalation Button - Visible if not already escalated */}
-          {ticketDetails.status !== 'escalated' && (
-            <div className="mt-4">
-              {!isEscalating ? (
-                <button onClick={() => setIsEscalating(true)} className="text-red-600 underline text-sm">Escalate this ticket</button>
-              ) : (
-                <div className="flex gap-2">
-                  <input className="border p-1" onChange={(e) => setEscalateReason(e.target.value)} placeholder="Reason..." />
-                  <button onClick={handleEscalate} className="bg-red-600 text-white px-2 py-1 rounded">Submit</button>
-                </div>
+      <div className="grid grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h2 className="font-bold mb-2">Raise Ticket</h2>
+          <form action={async (fd) => { await createTicket(fd); alert('Submitted'); }}>
+            <textarea name="description" className="w-full border p-2 mb-2" placeholder="Description" />
+            <button className="bg-blue-600 text-white px-4 py-2 rounded">Submit</button>
+          </form>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow">
+          <h2 className="font-bold mb-2">Check Ticket</h2>
+          <form action={handleStatus} className="flex gap-2">
+            <input name="code" className="border p-2" placeholder="6-digit code" />
+            <button className="bg-gray-800 text-white px-4 py-2 rounded">Check</button>
+          </form>
+          {ticketDetails && (
+            <div className="mt-4 p-3 bg-gray-100 rounded">
+              <p>Status: {ticketDetails.status}</p>
+              {ticketDetails.ticket_replies?.map((r:any, i:number) => <p key={i} className="text-sm mt-1">- {r.message}</p>)}
+              {ticketDetails.status !== 'escalated' && (
+                <div className="mt-2 flex gap-2"><input className="border p-1" onChange={(e) => setReason(e.target.value)} placeholder="Escalate reason" /><button onClick={async () => { await escalateTicket(ticketDetails.id, reason); alert('Escalated'); }} className="bg-red-600 text-white px-2 rounded">Escalate</button></div>
               )}
             </div>
           )}
         </div>
-      )}
-      
-      {/* Rest of your Performance Matrix and Raise Ticket forms... */}
+      </div>
     </main>
   )
 }
 
-export default function StaffDashboard() {
-  return <Suspense fallback={<div>Loading...</div>}><DashboardContent /></Suspense>
-}
+export default function StaffPage() { return <Suspense fallback={<div>Loading...</div>}><DashboardContent /></Suspense> }
