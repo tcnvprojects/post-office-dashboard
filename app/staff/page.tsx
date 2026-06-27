@@ -61,10 +61,13 @@ function DashboardContent() {
   return (
     <main className="min-h-screen bg-gray-50 pb-20">
       <header className="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-        <h1 className="font-bold text-gray-800 text-lg">Office {officeId}</h1>
-        <div className="flex bg-gray-100 p-1 rounded-full">
-          <button onClick={() => setView('performance')} className={`px-5 py-2 rounded-full text-xs font-bold transition ${view === 'performance' ? 'bg-white shadow-sm' : ''}`}>STATS</button>
-          <button onClick={() => setView('grievance')} className={`px-5 py-2 rounded-full text-xs font-bold transition ${view === 'grievance' ? 'bg-white shadow-sm' : ''}`}>GRIEVANCE</button>
+        <h1 className="font-bold text-gray-800 text-lg">Dak Connect</h1>
+        <div className="flex items-center gap-4">
+          <div className="flex bg-gray-100 p-1 rounded-full">
+            <button onClick={() => setView('performance')} className={`px-5 py-2 rounded-full text-xs font-bold transition ${view === 'performance' ? 'bg-white shadow-sm' : ''}`}>STATS</button>
+            <button onClick={() => setView('grievance')} className={`px-5 py-2 rounded-full text-xs font-bold transition ${view === 'grievance' ? 'bg-white shadow-sm' : ''}`}>GRIEVANCE</button>
+          </div>
+          <a href="/" className="text-xs font-bold text-red-600 hover:text-red-800">LOGOUT</a>
         </div>
       </header>
 
