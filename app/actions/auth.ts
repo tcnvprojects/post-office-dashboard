@@ -7,16 +7,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function verifyPasscode(passcode: string) {
-  // Querying the 'passcode' column as defined in your table schema
+export async function verifyPasscode(input: string) {
+  // We check if input matches either the 'passcode' or 'office_id' column
   const { data, error } = await supabase
     .from('users') 
     .select('role, office_id')
-    .eq('passcode', passcode)
+    .or(`passcode.eq.${input},office_id.eq.${input}`)
     .eq('is_active', true)
     .single()
 
   if (error || !data) {
+    console.error("Auth Error:", error); // Check your terminal logs if this fails
     return { success: false }
   }
   
