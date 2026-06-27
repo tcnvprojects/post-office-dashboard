@@ -2,7 +2,6 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-// Ensure you have these environment variables set in your .env.local file
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!, 
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -10,9 +9,10 @@ const supabase = createClient(
 
 export async function verifyPasscode(passcode: string) {
   const { data, error } = await supabase
-    .from('staff') 
+    .from('users') 
     .select('role, office_id')
     .eq('passcode', passcode)
+    .eq('is_active', true)
     .single()
 
   if (error || !data) {
